@@ -1,51 +1,41 @@
-mod host;
+
 mod client;
+mod host;
 
-use tokio::io::{self, AsyncReadExt, AsyncWriteExt};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::io::split;
-use clap::{command, Parser, Subcommand};
+use clap::{Parser, Subcommand};
+use std::process::Command;
 
+/// Wi-Fi Manager CLI
 #[derive(Parser)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand)]
 enum Commands {
-    /// Routes traffic from one port to another
-    Host {
-        #[arg(short = 'l', long = "listen", value_name = "PORT", help = "Port to listen on")]
-        listen_port: u16,
-
-        #[arg(short = 'i', long = "ip", value_name = "ip", help = "ip addr without port")]
-        listen_ip: String,
-
-    },
 
     Connect {
-        #[arg(short = 'l', long = "listen", value_name = "PORT", help = "Port to listen on")]
-        listen_port: u16,
-
-        #[arg(short = 'i', long = "ip", value_name = "ip", help = "ip addr without port")]
-        listen_ip: String,
-
+        ip: String,
+        port: u16,
     },
+
+    Host {
+        ip: String,
+        port: u16,
+    }
 }
 
-
- fn main() -> io::Result<()> {
+fn main() {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::Host { listen_port, listen_ip } => {
-            host::main( &listen_ip, listen_port).expect(" host error")
+    match &cli.command {
+        Commands::Connect { ip, port } => {
+            client::connect_server(ip, port);
         },
-        Commands::Connect {listen_port, listen_ip, } => {
-            client::main( &listen_ip, listen_port).expect(" client error ")
+        Commands::Host { port , ip} => {
+            host::host_server(ip, port);
         }
     }
-
-    Ok(())
 }
+

@@ -3,44 +3,49 @@ use std::io::{Read, Write};
 use std::thread;
 
 fn handle_client(mut stream: TcpStream) {
+    let peer_addr = match stream.peer_addr() {
+        Ok(addr) => addr.to_string(),
+        Err(_) => "Unknown IP".to_string(),
+    };
+
     let mut buffer = [0; 1024];
 
     loop {
         match stream.read(&mut buffer) {
             Ok(0) => {
-                println!("Client disconnected.");
+                println!("Client {} disconnected", peer_addr);
                 break;
             }
-            Ok(n) => {
-                let received_msg = String::from_utf8_lossy(&buffer[..n]);
-                println!("Received: {}", received_msg);
+            Ok(size) => {
+                let received_msg = String::from_utf8_lossy(&buffer[..size]);
+                println!("Received from {}: {}", peer_addr, received_msg);
 
-                // Send a reply
-                let response = "Hello from Server!";
-                stream.write_all(response.as_bytes()).unwrap();
-                println!("Reply sent!");
+                // Echo back the message
+                if let Err(e) = stream.write_all(received_msg.as_bytes()) {
+                    eprintln!("Failed to send response to {}: {}", peer_addr, e);
+                    break;
+                }
             }
             Err(e) => {
-                eprintln!("Error reading from client: {}", e);
+                eprintln!("Error with client {}: {}", peer_addr, e);
                 break;
             }
         }
     }
 }
 
-pub fn main(ip:&str, port: u16) -> std::io::Result<()> {
-    let listener = TcpListener::bind(format!("{}:{}", ip, port) )?;
-    println!("Server listening on port {port}...");
+pub fn host_server(ip_category: &str, port: &u16) {
+    let listener = TcpListener::bind(format!("{}:{}", ip_category, port)).expect("Failed to bind port");
+
+    println!("Server listening on port 8080...");
 
     for stream in listener.incoming() {
         match stream {
             Ok(stream) => {
                 println!("New client connected!");
-                thread::spawn(move || handle_client(stream)); // Handle each client in a new thread
+                thread::spawn(|| handle_client(stream)); // Handle client in a new thread
             }
             Err(e) => eprintln!("Connection failed: {}", e),
         }
     }
-
-    Ok(())
 }

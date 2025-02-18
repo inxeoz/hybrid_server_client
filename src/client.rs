@@ -1,37 +1,27 @@
 use std::net::TcpStream;
-use std::io::{Read, Write};
-use std::thread;
-use std::time::Duration;
+use std::io::{self, Write, Read};
 
-pub fn main(ip:&str, port: u16) -> std::io::Result<()> {
-    let mut stream = TcpStream::connect(format!("{}:{}", ip, port))?;
+pub fn connect_server(ip: &str, port: &u16)  {
+    let mut stream = TcpStream::connect(format!("{}:{}", ip, port)) // Replace with your server's IP
+        .expect("Failed to connect to server");
+
     println!("Connected to server!");
 
-    let mut buffer = [0; 1024];
-
     loop {
-        // Send a message to the server
-        let message = "Hello from Client!";
-        stream.write_all(message.as_bytes())?;
-        println!("Sent: {}", message);
+        let mut input = String::new();
+        print!("Enter message: ");
+        io::stdout().flush().unwrap();
+        io::stdin().read_line(&mut input).unwrap();
 
-        // Wait for a response
-        match stream.read(&mut buffer) {
-            Ok(n) if n > 0 => {
-                println!("Server replied: {}", String::from_utf8_lossy(&buffer[..n]));
-            }
-            Ok(_) => {
-                println!("Server disconnected.");
-                break;
-            }
-            Err(e) => {
-                eprintln!("Error reading from server: {}", e);
-                break;
-            }
+        if input.trim().is_empty() {
+            break;
         }
 
-        thread::sleep(Duration::from_secs(3)); // Wait before sending the next message
-    }
+        stream.write_all(input.as_bytes()).unwrap();
 
-    Ok(())
+        let mut buffer = [0; 1024];
+        let size = stream.read(&mut buffer).unwrap();
+        let response = String::from_utf8_lossy(&buffer[..size]);
+        println!("Server replied: {}", response);
+    }
 }
