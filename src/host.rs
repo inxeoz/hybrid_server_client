@@ -37,7 +37,7 @@ fn handle_client(mut stream: TcpStream) {
 pub fn host_server(ip_category: &str, port: &u16) {
     let listener = TcpListener::bind(format!("{}:{}", ip_category, port)).expect("Failed to bind port");
 
-    println!("Server listening on port 8080...");
+    println!("Server listening on port {port}...");
 
     for stream in listener.incoming() {
         match stream {
