@@ -18,45 +18,43 @@ enum Commands {
 }
 
 /// Forwards the TCP connection while logging data
-async fn forward(mut inbound: TcpStream, target_addr: String, direction: &str) {
+async fn forward(inbound: TcpStream, target_addr: String, direction: &str) {
     match TcpStream::connect(&target_addr).await {
-        Ok(mut outbound) => {
+        Ok(outbound) => {
             let (mut ri, mut wi) = split(inbound);
             let (mut ro, mut wo) = split(outbound);
 
-            let dir_clone = direction.to_string();
+            let dir_clone1 = direction.to_owned(); // Clone for first task
+            let dir_clone2 = dir_clone1.clone();   // Clone for second task
 
-            // Task: Forward & log incoming → outgoing
             let forward_task = tokio::spawn(async move {
                 let mut buffer = [0u8; 1024];
                 while let Ok(n) = ri.read(&mut buffer).await {
                     if n == 0 {
                         break;
                     }
-                    println!("[{}] Received ({} bytes): {}", dir_clone, n, String::from_utf8_lossy(&buffer[..n]));
-
+                    println!("[{}] Received ({} bytes): {}", dir_clone1, n, String::from_utf8_lossy(&buffer[..n]));
                     if let Err(e) = wo.write_all(&buffer[..n]).await {
-                        eprintln!("[{}] Error forwarding: {}", dir_clone, e);
+                        eprintln!("Error forwarding from client: {}", e);
                         break;
                     }
                 }
             });
 
-            // Task: Forward & log outgoing → incoming
             let return_task = tokio::spawn(async move {
                 let mut buffer = [0u8; 1024];
                 while let Ok(n) = ro.read(&mut buffer).await {
                     if n == 0 {
                         break;
                     }
-                    println!("[{}] Sent ({} bytes): {}", dir_clone, n, String::from_utf8_lossy(&buffer[..n]));
-
+                    println!("[{}] Sent ({} bytes): {}", dir_clone2, n, String::from_utf8_lossy(&buffer[..n]));
                     if let Err(e) = wi.write_all(&buffer[..n]).await {
-                        eprintln!("[{}] Error sending back: {}", dir_clone, e);
+                        eprintln!("Error forwarding to client: {}", e);
                         break;
                     }
                 }
             });
+
 
             let _ = tokio::try_join!(forward_task, return_task);
         }
